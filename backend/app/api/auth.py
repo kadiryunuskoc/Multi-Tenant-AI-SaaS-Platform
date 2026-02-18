@@ -5,16 +5,20 @@ from app.database import get_db
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.schemas.auth import (
-    UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest, TenantCreate, TenantResponse
+    UserCreate, UserResponse, LoginRequest, TokenResponse, TenantCreate, TenantResponse
 )
-from app.utils.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
+from app.utils.security import verify_password, get_password_hash, create_access_token, decode_token
 from app.utils.dependencies import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(
+    user_data: UserCreate, 
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """Register a new user."""
     
     # Check if user already exists
@@ -74,46 +78,14 @@ async def login(
     
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id), "tenant_id": user.tenant_id})
-    refresh_token = create_refresh_token(data={"sub": str(user.id), "tenant_id": user.tenant_id})
     
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": user
     }
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
-    """Refresh access token using refresh token."""
-    
-    payload = decode_token(token_data.refresh_token)
-    if payload is None or payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
-        )
-    
-    user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
-    
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive"
-        )
-    
-    # Create new tokens
-    access_token = create_access_token(data={"sub": str(user.id), "tenant_id": user.tenant_id})
-    refresh_token = create_refresh_token(data={"sub": str(user.id), "tenant_id": user.tenant_id})
-    
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "user": user
-    }
 
 
 @router.get("/me", response_model=UserResponse)
@@ -125,6 +97,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 @router.post("/tenants", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     tenant_data: TenantCreate,
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """Create a new tenant (public endpoint for demo purposes)."""

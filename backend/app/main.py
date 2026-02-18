@@ -21,7 +21,9 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     init_db()
-    print("✅ Database initialized")
+    from app.database import seed_data
+    seed_data()
+    print("✅ Database initialized and seeded")
     
     yield
     

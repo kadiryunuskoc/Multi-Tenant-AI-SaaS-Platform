@@ -8,7 +8,8 @@ http://localhost:8000
 
 ## Authentication
 
-All endpoints except `/auth/register`, `/auth/login`, and `/auth/tenants` require authentication via JWT Bearer token.
+All endpoints except `/auth/login` require authentication via JWT Bearer token.
+Some administrative endpoints (like creating tenants or registering new users) require the `admin` role.
 
 **Header Format:**
 ```
@@ -22,7 +23,9 @@ Authorization: Bearer <access_token>
 ### Authentication
 
 #### POST /api/v1/auth/tenants
-Create a new tenant.
+Create a new tenant. Requires `admin` role.
+
+**Headers:** `Authorization: Bearer <token>`
 
 **Request:**
 ```json
@@ -45,7 +48,9 @@ Create a new tenant.
 ---
 
 #### POST /api/v1/auth/register
-Register a new user.
+Register a new user. Requires `admin` role.
+
+**Headers:** `Authorization: Bearer <token>`
 
 **Request:**
 ```json
@@ -90,7 +95,6 @@ Authenticate and get JWT tokens.
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
   "user": {
     "id": 1,
@@ -106,19 +110,6 @@ Authenticate and get JWT tokens.
 
 ---
 
-#### POST /api/v1/auth/refresh
-Refresh access token.
-
-**Request:**
-```json
-{
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response:** `200 OK` (same as login)
-
----
 
 #### GET /api/v1/auth/me
 Get current user information.

@@ -31,3 +31,41 @@ def get_db():
 def init_db():
     """Initialize database tables."""
     Base.metadata.create_all(bind=engine)
+
+
+def seed_data():
+    """Seed initial data (Superadmin and default Tenant)."""
+    from app.models.user import User
+    from app.models.tenant import Tenant
+    from app.utils.security import get_password_hash
+    
+    db = SessionLocal()
+    try:
+        # Check if default tenant exists
+        tenant = db.query(Tenant).filter(Tenant.name == "System Admin").first()
+        if not tenant:
+            tenant = Tenant(name="System Admin")
+            db.add(tenant)
+            db.commit()
+            db.refresh(tenant)
+        
+        # Check if superadmin exists
+        superadmin_email = "kadir@superadmin.com"
+        superadmin = db.query(User).filter(User.email == superadmin_email).first()
+        if not superadmin:
+            hashed_password = get_password_hash("kadir34")
+            superadmin = User(
+                email=superadmin_email,
+                hashed_password=hashed_password,
+                full_name="Super Admin",
+                role="admin",
+                tenant_id=tenant.id
+            )
+            db.add(superadmin)
+            db.commit()
+            print(f"✅ Created superadmin user: {superadmin_email}")
+    except Exception as e:
+        print(f"❌ Error seeding data: {str(e)}")
+        db.rollback()
+    finally:
+        db.close()
